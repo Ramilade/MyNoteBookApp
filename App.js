@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -54,7 +54,7 @@ const InputFields2 = ({ editableTitle, setEditableTitle, editableContent, setEdi
 };
 
 const AddNoteButton = ({ addBtnPressed }) => {
-  return <Button title="Add Note" onPress={addBtnPressed} color="grey" />;
+  return <Button title="Add Note" onPress={addBtnPressed} color="#FED95C" />;
 };
 
 const Page1 = ({ navigation, route }) => {
@@ -68,20 +68,13 @@ const Page1 = ({ navigation, route }) => {
     }
   };
 
-  const goToPage2WithNote = (note, index) => {
-    navigation.navigate("Page2", { note, noteIndex: index });
+  const goToPage2WithNote = (note) => {
+    navigation.navigate("Page2", { note });
   };
 
   const deleteNote = (index) => {
     setNotes((prevNotes) => prevNotes.filter((note, i) => i !== index));
   };
-
-  const updatedNote = route.params?.updatedNote;
-  const updateIndex = route.params?.noteIndex;
-
-  if (updatedNote && updateIndex !== undefined) {
-    notes[updateIndex] = updatedNote;
-  }
 
   return (
     <ImageBackground source={require('./background.png')} style={styles.backgroundImage}>
@@ -92,11 +85,11 @@ const Page1 = ({ navigation, route }) => {
         <FlatList
           data={notes}
           renderItem={({ item, index }) => (
-            <View style={styles.noteContainer}>
-              <TouchableOpacity onPress={() => goToPage2WithNote(item, index)}>
+            <View style={[styles.noteContainer, { backgroundColor: 'rgba(254, 217, 92, 0.25)' }]}>
+              <TouchableOpacity onPress={() => goToPage2WithNote(item)}>
                 <Text style={styles.listItem}>{item.title.substring(0, 20)}</Text>
               </TouchableOpacity>
-              <Button title="Delete" onPress={() => deleteNote(index)} color="grey" />
+              <Button title="Delete" onPress={() => deleteNote(index)} color="#FED95C" />
             </View>
           )}
           keyExtractor={(item, index) => index.toString()}
@@ -109,14 +102,13 @@ const Page1 = ({ navigation, route }) => {
 const Page2 = ({ navigation, route }) => {
   const [editableTitle, setEditableTitle] = useState(route.params?.note?.title || "");
   const [editableContent, setEditableContent] = useState(route.params?.note?.content || "");
-  const noteIndex = route.params?.noteIndex;
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigation.setOptions({ title: editableTitle || "New Note" });
   }, [editableTitle, navigation]);
 
   const saveAndGoBack = () => {
-    navigation.navigate("Page1", { updatedNote: { title: editableTitle, content: editableContent }, noteIndex });
+    navigation.navigate("Page1");
   };
 
   return (
@@ -129,7 +121,7 @@ const Page2 = ({ navigation, route }) => {
           editableContent={editableContent}
           setEditableContent={setEditableContent}
         />
-        <Button title="Save" onPress={saveAndGoBack} color="grey" />
+        <Button title="Save" onPress={saveAndGoBack} color="#FED95C" />
       </View>
     </ImageBackground>
   );
@@ -178,7 +170,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(128,128,128,0.25)',
     marginBottom: 10,
   },
 });

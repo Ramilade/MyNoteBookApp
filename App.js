@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -9,96 +9,133 @@ import {
   Button,
   FlatList,
   TouchableOpacity,
+  ImageBackground,
 } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
-const Page1 = ({ navigation, route }) => {
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState([]);
+const Header1 = () => {
+  return <Text style={styles.header}>Note Index</Text>;
+};
 
-  useEffect(() => {
-    if (route.params?.updatedNote && route.params?.noteIndex !== undefined) {
-      const updatedNotes = [...notes];
-      updatedNotes[route.params.noteIndex] = route.params.updatedNote;
-      setNotes(updatedNotes);
-    }
-  }, [route.params?.updatedNote, route.params?.noteIndex]);
+const Header2 = ({ editableTitle }) => {
+  return <Text style={styles.header}>{editableTitle || 'New Note'}</Text>;
+};
 
-  const addNote = () => {
-    if (title.trim()) {
-      setNotes([...notes, { title, content: '' }]);
-      setTitle('');
-    }
-  };
-
-  const deleteNote = (index) => {
-    const newNotes = [...notes];
-    newNotes.splice(index, 1);
-    setNotes(newNotes);
-  };
-
+const InputFields1 = ({ title, setTitle }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Note Index</Text>
-      <View style={styles.centeredContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Note Title"
-          value={title}
-          onChangeText={setTitle}
-        />
-        <Button title="Add Note" onPress={addNote} color="#ff0000" />
-      </View>
-      <FlatList
-        data={notes}
-        renderItem={({ item, index }) => (
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => navigation.navigate('Page2', { note: item, noteIndex: index })}>
-              <Text style={styles.listItem}>{item.title}</Text>
-            </TouchableOpacity>
-            <Button title="Delete" onPress={() => deleteNote(index)} />
-          </View>
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        keyExtractor={(item, index) => index.toString()}
+    <TextInput
+      style={styles.textInput}
+      placeholder="Note Title"
+      onChangeText={(txt) => setTitle(txt)}
+      value={title}
+    />
+  );
+};
+
+const InputFields2 = ({ editableTitle, setEditableTitle, editableContent, setEditableContent }) => {
+  return (
+    <View>
+      <TextInput
+        style={styles.textInput}
+        placeholder="Note Title"
+        value={editableTitle}
+        onChangeText={(text) => setEditableTitle(text)}
+      />
+      <TextInput
+        style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+        placeholder="Note Content"
+        value={editableContent}
+        onChangeText={(text) => setEditableContent(text)}
+        multiline
       />
     </View>
   );
 };
 
-const Page2 = ({ navigation, route }) => {
-  const [editableTitle, setEditableTitle] = useState(route.params?.note?.title || '');
-  const [editableContent, setEditableContent] = useState(route.params?.note?.content || '');
+const AddNoteButton = ({ addBtnPressed }) => {
+  return <Button title="Add Note" onPress={addBtnPressed} color="grey" />;
+};
 
-  const saveAndGoBack = () => {
-    navigation.navigate('Page1', { updatedNote: { title: editableTitle, content: editableContent }, noteIndex: route.params.noteIndex });
+const Page1 = ({ navigation, route }) => {
+  const [title, setTitle] = useState("");
+  const [notes, setNotes] = useState([]);
+
+  const addBtnPressed = () => {
+    if (title.trim() !== "") {
+      setNotes((prevNotes) => [...prevNotes, { title, content: "" }]);
+      setTitle("");
+    }
   };
 
+  const goToPage2WithNote = (note, index) => {
+    navigation.navigate("Page2", { note, noteIndex: index });
+  };
+
+  const deleteNote = (index) => {
+    setNotes((prevNotes) => prevNotes.filter((note, i) => i !== index));
+  };
+
+  const updatedNote = route.params?.updatedNote;
+  const updateIndex = route.params?.noteIndex;
+
+  if (updatedNote && updateIndex !== undefined) {
+    notes[updateIndex] = updatedNote;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>{editableTitle || 'New Note'}</Text>
-      <View style={styles.centeredContainer}>
-        <TextInput
-          style={styles.textInput}
-          placeholder="Note Title"
-          value={editableTitle}
-          onChangeText={setEditableTitle}
+    <ImageBackground source={require('./background.png')} style={styles.backgroundImage}>
+      <View style={styles.container}>
+        <Header1 />
+        <InputFields1 title={title} setTitle={setTitle} />
+        <AddNoteButton addBtnPressed={addBtnPressed} />
+        <FlatList
+          data={notes}
+          renderItem={({ item, index }) => (
+            <View style={styles.noteContainer}>
+              <TouchableOpacity onPress={() => goToPage2WithNote(item, index)}>
+                <Text style={styles.listItem}>{item.title.substring(0, 20)}</Text>
+              </TouchableOpacity>
+              <Button title="Delete" onPress={() => deleteNote(index)} color="grey" />
+            </View>
+          )}
+          keyExtractor={(item, index) => index.toString()}
         />
-        <TextInput
-          style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
-          placeholder="Note Content"
-          value={editableContent}
-          onChangeText={setEditableContent}
-          multiline
-        />
-        <Button title="Save" onPress={saveAndGoBack} />
       </View>
-    </View>
+    </ImageBackground>
   );
 };
 
-const App = () => {
+const Page2 = ({ navigation, route }) => {
+  const [editableTitle, setEditableTitle] = useState(route.params?.note?.title || "");
+  const [editableContent, setEditableContent] = useState(route.params?.note?.content || "");
+  const noteIndex = route.params?.noteIndex;
+
+  React.useEffect(() => {
+    navigation.setOptions({ title: editableTitle || "New Note" });
+  }, [editableTitle, navigation]);
+
+  const saveAndGoBack = () => {
+    navigation.navigate("Page1", { updatedNote: { title: editableTitle, content: editableContent }, noteIndex });
+  };
+
+  return (
+    <ImageBackground source={require('./background.png')} style={styles.backgroundImage}>
+      <View style={styles.container}>
+        <Header2 editableTitle={editableTitle} />
+        <InputFields2
+          editableTitle={editableTitle}
+          setEditableTitle={setEditableTitle}
+          editableContent={editableContent}
+          setEditableContent={setEditableContent}
+        />
+        <Button title="Save" onPress={saveAndGoBack} color="grey" />
+      </View>
+    </ImageBackground>
+  );
+};
+
+export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Page1">
@@ -107,40 +144,41 @@ const App = () => {
       </Stack.Navigator>
     </NavigationContainer>
   );
-};
-
-export default App;
+}
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+  },
   container: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0)',
     paddingTop: 50,
-    backgroundColor: '#fff',
+    padding: 10,
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
     marginBottom: 20,
-  },
-  centeredContainer: {
-    alignItems: 'center',
+    textAlign: 'center',
   },
   textInput: {
-    width: '80%',
-    borderWidth: 1,
+    width: '100%',
     borderColor: 'gray',
+    borderWidth: 1,
     marginBottom: 10,
     padding: 8,
   },
   listItem: {
-    fontSize: 18,
-    flex: 1,
     padding: 10,
+    paddingLeft: 0,
+    fontSize: 18,
   },
-  separator: {
-    height: 1,
-    backgroundColor: 'grey',
-    width: '100%',
+  noteContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(128,128,128,0.25)',
+    marginBottom: 10,
   },
 });

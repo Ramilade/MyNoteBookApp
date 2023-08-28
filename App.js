@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
@@ -13,91 +13,54 @@ import {
 
 const Stack = createNativeStackNavigator();
 
-// Header for Page1
-const Header1 = () => {
-  return <Text style={styles.header}>Note Index</Text>;
-};
-
-// Header for Page2
-const Header2 = ({ editableTitle }) => {
-  return <Text style={styles.header}>{editableTitle || 'New Note'}</Text>;
-};
-
-// Input fields for Page1
-const InputFields1 = ({ title, setTitle }) => {
-  return (
-    <View style={styles.centeredContainer}>
-      <TextInput
-        style={styles.textInput}
-        placeholder="Note Title"
-        onChangeText={(txt) => setTitle(txt)}
-        value={title}
-      />
-    </View>
-  );
-};
-
-// Input fields for Page2
-const InputFields2 = ({ editableTitle, setEditableTitle, editableContent, setEditableContent }) => {
-  return (
-    <View style={styles.centeredContainer}>
-      <TextInput
-        style={styles.textInput}
-        placeholder="Note Title"
-        value={editableTitle}
-        onChangeText={(text) => setEditableTitle(text)}
-      />
-      <TextInput
-        style={[styles.textInput, { height: 100 }]}
-        placeholder="Note Content"
-        value={editableContent}
-        onChangeText={(text) => setEditableContent(text)}
-        multiline
-      />
-    </View>
-  );
-};
-
-// Add Note Button for Page1
-const AddNoteButton = ({ addBtnPressed }) => {
-  return <Button title="Add Note" onPress={addBtnPressed} color="#ff0000" />;
-};
-
 const Page1 = ({ navigation, route }) => {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState('');
   const [notes, setNotes] = useState([]);
 
-  const addBtnPressed = () => {
-    if (title.trim() !== "") {
-      setNotes((prevNotes) => [...prevNotes, { title, content: "" }]);
-      setTitle("");
+  useEffect(() => {
+    if (route.params?.updatedNote && route.params?.noteIndex !== undefined) {
+      const updatedNotes = [...notes];
+      updatedNotes[route.params.noteIndex] = route.params.updatedNote;
+      setNotes(updatedNotes);
+    }
+  }, [route.params?.updatedNote, route.params?.noteIndex]);
+
+  const addNote = () => {
+    if (title.trim()) {
+      setNotes([...notes, { title, content: '' }]);
+      setTitle('');
     }
   };
 
-  const goToPage2WithNote = (note, index) => {
-    navigation.navigate("Page2", { note, noteIndex: index });
+  const deleteNote = (index) => {
+    const newNotes = [...notes];
+    newNotes.splice(index, 1);
+    setNotes(newNotes);
   };
-
-  const updatedNote = route.params?.updatedNote;
-  const updateIndex = route.params?.noteIndex;
-
-  if (updatedNote && updateIndex !== undefined) {
-    notes[updateIndex] = updatedNote;
-  }
 
   return (
     <View style={styles.container}>
-      <Header1 />
-      <InputFields1 title={title} setTitle={setTitle} />
-      <AddNoteButton addBtnPressed={addBtnPressed} />
+      <Text style={styles.header}>Note Index</Text>
+      <View style={styles.centeredContainer}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Note Title"
+          value={title}
+          onChangeText={setTitle}
+        />
+        <Button title="Add Note" onPress={addNote} color="#ff0000" />
+      </View>
       <FlatList
         data={notes}
         renderItem={({ item, index }) => (
-          <TouchableOpacity onPress={() => goToPage2WithNote(item, index)}>
-            <Text style={styles.listItem}>{item.title.substring(0, 20)}</Text>
-            <View style={styles.separator} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => navigation.navigate('Page2', { note: item, noteIndex: index })}>
+              <Text style={styles.listItem}>{item.title}</Text>
+            </TouchableOpacity>
+            <Button title="Delete" onPress={() => deleteNote(index)} />
+          </View>
         )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         keyExtractor={(item, index) => index.toString()}
       />
     </View>
@@ -105,33 +68,37 @@ const Page1 = ({ navigation, route }) => {
 };
 
 const Page2 = ({ navigation, route }) => {
-  const [editableTitle, setEditableTitle] = useState(route.params?.note?.title || "");
-  const [editableContent, setEditableContent] = useState(route.params?.note?.content || "");
-  const noteIndex = route.params?.noteIndex;
-
-  React.useEffect(() => {
-    navigation.setOptions({ title: editableTitle || "New Note" });
-  }, [editableTitle, navigation]);
+  const [editableTitle, setEditableTitle] = useState(route.params?.note?.title || '');
+  const [editableContent, setEditableContent] = useState(route.params?.note?.content || '');
 
   const saveAndGoBack = () => {
-    navigation.navigate("Page1", { updatedNote: { title: editableTitle, content: editableContent }, noteIndex });
+    navigation.navigate('Page1', { updatedNote: { title: editableTitle, content: editableContent }, noteIndex: route.params.noteIndex });
   };
 
   return (
     <View style={styles.container}>
-      <Header2 editableTitle={editableTitle} />
-      <InputFields2
-        editableTitle={editableTitle}
-        setEditableTitle={setEditableTitle}
-        editableContent={editableContent}
-        setEditableContent={setEditableContent}
-      />
-      <Button title="Save" onPress={saveAndGoBack} />
+      <Text style={styles.header}>{editableTitle || 'New Note'}</Text>
+      <View style={styles.centeredContainer}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="Note Title"
+          value={editableTitle}
+          onChangeText={setEditableTitle}
+        />
+        <TextInput
+          style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+          placeholder="Note Content"
+          value={editableContent}
+          onChangeText={setEditableContent}
+          multiline
+        />
+        <Button title="Save" onPress={saveAndGoBack} />
+      </View>
     </View>
   );
 };
 
-export default function App() {
+const App = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Page1">
@@ -140,38 +107,40 @@ export default function App() {
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
+
+export default App;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     paddingTop: 50,
-  },
-  centeredContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#fff',
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  centeredContainer: {
+    alignItems: 'center',
   },
   textInput: {
     width: '80%',
-    borderColor: 'gray',
     borderWidth: 1,
+    borderColor: 'gray',
     marginBottom: 10,
     padding: 8,
   },
   listItem: {
-    padding: 10,
-    paddingLeft: 0,
     fontSize: 18,
+    flex: 1,
+    padding: 10,
   },
   separator: {
     height: 1,
     backgroundColor: 'grey',
+    width: '100%',
   },
 });

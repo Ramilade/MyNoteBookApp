@@ -37,16 +37,26 @@ const Header2 = ({ editableTitle }) => {
   return <Text style={styles.header}>{editableTitle || 'New Note'}</Text>;
 };
 
-const InputFields1 = ({ title, setTitle }) => {
+const InputFields1 = ({ title, setTitle, content, setContent }) => {
   return (
-    <TextInput
-      style={styles.textInput}
-      placeholder="Note Title"
-      onChangeText={(txt) => setTitle(txt)}
-      value={title}
-    />
+    <View>
+      <TextInput
+        style={styles.textInput}
+        placeholder="Note Title"
+        onChangeText={(txt) => setTitle(txt)}
+        value={title}
+      />
+      <TextInput
+        style={[styles.textInput, { height: 100, textAlignVertical: 'top' }]}
+        placeholder="Note Content"
+        onChangeText={(txt) => setContent(txt)}
+        value={content}
+        multiline
+      />
+    </View>
   );
 };
+
 
 const InputFields2 = ({ editableTitle, setEditableTitle, editableContent, setEditableContent }) => {
   return (
@@ -75,13 +85,30 @@ const AddNoteButton = ({ addBtnPressed }) => {
 const Page1 = ({ navigation, route }) => {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState([]);
+  const [content, setContent] = useState("");
 
-  const addBtnPressed = () => {
-    if (title.trim() !== "") {
-      setNotes((prevNotes) => [...prevNotes, { title, content: "" }]);
-      setTitle("");
+
+  const buttonHandler = async () => {
+    try {
+      await addDoc(collection(database, "notes"), {
+        title: title,  // save the title
+        content: content,  // save the content
+      });
+    } catch (err) {
+      console.log("fejl i buttonHandler: " + err);
     }
   };
+
+
+  const addBtnPressed = async () => {
+    if (title.trim() !== "") {
+      setNotes((prevNotes) => [...prevNotes, { title, content }]);
+      setTitle("");
+      setContent("");  // reset content
+      await buttonHandler();
+    }
+  };
+
 
   const goToPage2WithNote = (note) => {
     navigation.navigate("Page2", { note });
@@ -95,7 +122,8 @@ const Page1 = ({ navigation, route }) => {
     <ImageBackground source={require('./background.png')} style={styles.backgroundImage}>
       <View style={styles.container}>
         <Header1 />
-        <InputFields1 title={title} setTitle={setTitle} />
+        <InputFields1 title={title} setTitle={setTitle} content={content} setContent={setContent} />
+
         <AddNoteButton addBtnPressed={addBtnPressed} />
         <FlatList
           data={notes}

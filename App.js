@@ -1,8 +1,9 @@
 import { app, database } from './firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useCollection } from 'react-firebase-hooks/firestore';
 import {
   StyleSheet,
   Text,
@@ -15,8 +16,6 @@ import {
   Image,
   Alert,
 } from 'react-native';
-
-//alert(JSON.stringify(database, null, 4));
 
 const Stack = createNativeStackNavigator();
 
@@ -31,7 +30,6 @@ const Header1 = () => {
     </View>
   );
 };
-
 
 const Header2 = ({ editableTitle }) => {
   return <Text style={styles.header}>{editableTitle || 'New Note'}</Text>;
@@ -56,7 +54,6 @@ const InputFields1 = ({ title, setTitle, content, setContent }) => {
     </View>
   );
 };
-
 
 const InputFields2 = ({ editableTitle, setEditableTitle, editableContent, setEditableContent }) => {
   return (
@@ -86,7 +83,8 @@ const Page1 = ({ navigation, route }) => {
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState([]);
   const [content, setContent] = useState("");
-
+  const [values, loading, error] = useCollection(collection(database, 'notes'));
+  const data = values?.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 
   const buttonHandler = async () => {
     try {
@@ -99,6 +97,9 @@ const Page1 = ({ navigation, route }) => {
     }
   };
 
+  async function deleteDocument(id) {
+    await deleteDoc(doc(database, "notes", id));
+  }
 
   const addBtnPressed = async () => {
     if (title.trim() !== "") {
@@ -109,13 +110,8 @@ const Page1 = ({ navigation, route }) => {
     }
   };
 
-
   const goToPage2WithNote = (note) => {
     navigation.navigate("Page2", { note });
-  };
-
-  const deleteNote = (index) => {
-    setNotes((prevNotes) => prevNotes.filter((note, i) => i !== index));
   };
 
   return (
@@ -123,16 +119,15 @@ const Page1 = ({ navigation, route }) => {
       <View style={styles.container}>
         <Header1 />
         <InputFields1 title={title} setTitle={setTitle} content={content} setContent={setContent} />
-
         <AddNoteButton addBtnPressed={addBtnPressed} />
         <FlatList
-          data={notes}
-          renderItem={({ item, index }) => (
+          data={data}
+          renderItem={({ item }) => (
             <View style={[styles.noteContainer, { backgroundColor: 'rgba(254, 217, 92, 0.25)' }]}>
               <TouchableOpacity onPress={() => goToPage2WithNote(item)}>
                 <Text style={styles.listItem}>{item.title.substring(0, 20)}</Text>
               </TouchableOpacity>
-              <Button title="Delete" onPress={() => deleteNote(index)} color="#FED95C" />
+              <Button title="Delete" onPress={() => deleteDocument(item.id)} color="#FED95C" />
             </View>
           )}
           keyExtractor={(item, index) => index.toString()}
@@ -150,7 +145,23 @@ const Page2 = ({ navigation, route }) => {
     navigation.setOptions({ title: editableTitle || "New Note" });
   }, [editableTitle, navigation]);
 
+  const updateNoteInFirestore = async (id, updatedTitle, updatedContent) => {
+    const noteRef = doc(database, "notes", id);
+
+    try {
+      await updateDoc(noteRef, {
+        title: updatedTitle,
+        content: updatedContent,
+      });
+    } catch (err) {
+      console.log("Error updating document: ", err);
+    }
+  };
+
   const saveAndGoBack = () => {
+    if (route.params?.note?.id) { // Only update if there's an ID, meaning it's an existing note
+      updateNoteInFirestore(route.params.note.id, editableTitle, editableContent);
+    }
     navigation.navigate("Page1");
   };
 
@@ -193,36 +204,35 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     flexDirection: 'row',
-    alignItems: 'center',  // to center items vertically
+    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20, // Moved from header style to space below the entire headerContainer
+    marginBottom: 20,
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
+    marginBottom: 10,
   },
   tooltipIcon: {
     width: 24,
     height: 24,
-    marginRight: 8, // changed marginLeft to marginRight since icon is now on the left
+    marginRight: 10,
   },
   textInput: {
-    width: '100%',
     borderColor: 'gray',
     borderWidth: 1,
     marginBottom: 10,
-    padding: 8,
-  },
-  listItem: {
-    padding: 10,
-    paddingLeft: 0,
-    fontSize: 18,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 3,
   },
   noteContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
+  },
+  listItem: {
+    maxWidth: '80%',
   },
 });

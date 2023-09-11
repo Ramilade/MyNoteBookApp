@@ -1,3 +1,5 @@
+import { app, database } from './firebase'
+import { collection, addDoc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -11,6 +13,8 @@ import {
   TouchableOpacity,
   ImageBackground,
 } from 'react-native';
+
+alert(JSON.stringify(database, null, 4))
 
 const Stack = createNativeStackNavigator();
 

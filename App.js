@@ -1,4 +1,4 @@
-import { app, database } from './firebase'
+import { app, database } from './firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
@@ -12,15 +12,26 @@ import {
   FlatList,
   TouchableOpacity,
   ImageBackground,
+  Image,
+  Alert,
 } from 'react-native';
 
-alert(JSON.stringify(database, null, 4))
+//alert(JSON.stringify(database, null, 4));
 
 const Stack = createNativeStackNavigator();
 
 const Header1 = () => {
-  return <Text style={styles.header}>Note Index</Text>;
+  return (
+    <View style={styles.headerContainer}>
+      <TouchableOpacity onPress={() => 
+        Alert.alert('Info', '- Enter the name of your note in the input box and press "Add Note". \n- Press the name of the note to edit the content of the note.')}>
+        <Image source={require('./tooltip_icon.png')} style={styles.tooltipIcon} />
+      </TouchableOpacity>
+      <Text style={styles.header}>Note Index</Text>
+    </View>
+  );
 };
+
 
 const Header2 = ({ editableTitle }) => {
   return <Text style={styles.header}>{editableTitle || 'New Note'}</Text>;
@@ -152,11 +163,21 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     padding: 10,
   },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',  // to center items vertically
+    justifyContent: 'center',
+    marginBottom: 20, // Moved from header style to space below the entire headerContainer
+  },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
     textAlign: 'center',
+  },
+  tooltipIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 8, // changed marginLeft to marginRight since icon is now on the left
   },
   textInput: {
     width: '100%',

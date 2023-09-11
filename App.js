@@ -94,9 +94,9 @@ const Page1 = ({ navigation, route }) => {
                             <TouchableOpacity onPress={() => goToPage2WithNote(item)}>
                                 <Text style={styles.listItem}>{item.title}</Text>
                             </TouchableOpacity>
-                            <View style={styles.smallerButton}>
-                                <Button title="Delete" onPress={() => deleteDocument(item.id)} color="#FED95C" />
-                            </View>
+                            <TouchableOpacity style={styles.deleteButton} onPress={() => deleteDocument(item.id)}>
+                                <Text style={styles.deleteButtonText}>Delete</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                     keyExtractor={(item, index) => index.toString()}
@@ -163,6 +163,18 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         padding: 10,
     },
+    deleteButton: {
+      width: 70,
+      height: 30,
+      backgroundColor: '#FED95C',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 5,
+  },
+  deleteButtonText: {
+      color: 'white',
+      fontWeight: 'bold',
+  },
     headerContainer: {
         flexDirection: 'row',
         alignItems: 'center',

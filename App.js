@@ -6,6 +6,8 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
+import {storage} from "./firebase";
+import { ref, uploadBytes, uploadBytesResumable} from "firebase/storage";
 import React, { useState, useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -28,10 +30,27 @@ async function launchImagePicker() {
   let result = await ImagePicker.launchImageLibraryAsync({
     allowsEditing: true,
   });
-  if (!result.cancelled) {
+  if (!result.canceled) {
     setImagePath(result.assets[0].uri);
-  }
+    setNoteImages((prevImages) => [...prevImages, result.assets[0].uri]);
+  }  
 }
+// TODO: Brug billedets navn i stedet for myimage.jpg
+// TODO: Upload flere billeder på en gang
+// TODO: gem billeder i noten, så de er der når man går ind og ud af noten
+async function uploadImage(imagePath) {
+    if (!imagePath) {
+        alert("No image selected for upload!");
+        return;
+    }
+    const res = await fetch(imagePath);
+    const blob = await res.blob();
+    const storageRef = ref(storage, "myimage.jpg");
+    uploadBytesResumable(storageRef, blob).then((snapshot) => {
+        alert("Image uploaded successfully!");
+    })
+}
+
 
 const Stack = createNativeStackNavigator();
 
@@ -179,30 +198,42 @@ const Page1 = ({ navigation, route }) => {
 };
 
 const Page2 = ({ navigation, route }) => {
-  const note = route.params?.note;
-  const [editableTitle, setEditableTitle] = useState(note?.title || "");
-  const [editableContent, setEditableContent] = useState(note?.content || "");
-  const [noteImages, setNoteImages] = useState(note?.images || []);
+    const note = route.params?.note;
+    const [imagePath, setImagePath] = useState("");
+    const [editableTitle, setEditableTitle] = useState(note?.title || "");
+    const [editableContent, setEditableContent] = useState(note?.content || "");
+    const [noteImages, setNoteImages] = useState(note?.images || []);
 
+    const handleDeleteImage = (indexToDelete) => {
+      setNoteImages((prevImages) =>
+        prevImages.filter((_, index) => index !== indexToDelete)
+      );
+    };
 
-  const launchImagePickerForNoteContent = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-    });
-    if (!result.canceled) {
-      setNoteImages((prevImages) => [...prevImages, result.assets[0].uri]);
-    }
-  };
-  
+    const launchImagePickerForNoteContent = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            alert("Sorry, we need camera roll permissions to make this work!");
+            return;
+        }
+        let result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+        });
+
+        if (!result.canceled) {
+            setImagePath(result.assets[0].uri);
+            setNoteImages((prevImages) => [...prevImages, result.assets[0].uri]);
+        }
+    };
 
   const updateNoteInFirestore = async () => {
     try {
       if (note && note.id) {
         await updateDoc(doc(database, "notes", note.id), {
-            title: editableTitle,
-            content: editableContent,
-            images: noteImages,
-          });          
+          title: editableTitle,
+          content: editableContent,
+          images: noteImages,
+        });
       }
     } catch (err) {
       console.error("Error in updateNoteInFirestore: ", err);
@@ -232,19 +263,29 @@ const Page2 = ({ navigation, route }) => {
           setEditableContent={setEditableContent}
         />
         {noteImages.map((imageUri, index) => (
-  <Image
-    key={index}
-    source={{ uri: imageUri }}
-    style={{ width: 100, height: 100, marginVertical: 10 }}
-  />
-))}
+          <View key={index} style={styles.imageContainer}>
+            <Image
+              source={{ uri: imageUri }}
+              style={{ width: 100, height: 100, marginVertical: 10 }}
+            />
+            <TouchableOpacity
+              style={styles.deleteImageButton}
+              onPress={() => handleDeleteImage(index)}
+            >
+              <Text style={styles.deleteImageText}>X</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
 
-        <Button
-          title="Upload Image"
-          onPress={launchImagePickerForNoteContent}
-          color="#FED95C"
+<Button
+            title="Pick Image"
+            onPress={launchImagePickerForNoteContent}
+            color="#FED95C"
         />
-        <Button title="Save" onPress={saveAndGoBack} color="#FED95C" />
+       <Button title="Upload Image" onPress={() => uploadImage(imagePath)} color="#FED95C" />
+
+
+       <Button title="Save" onPress={saveAndGoBack} color="#FED95C" />
       </View>
     </ImageBackground>
   );
@@ -325,4 +366,23 @@ const styles = StyleSheet.create({
   smallerButton: {
     width: "80%",
   },
+  imageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 5,
+  },
+  deleteImageButton: {
+    marginLeft: 10,
+    backgroundColor: '#FF0000',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteImageText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  }
 });
